@@ -102,10 +102,29 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'form.html')));
 
-app.get('/admin', (req, res) =>
+// ── Admin auth middleware ────────────────────────────────────────────────────
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'farwell@admin2026';
+
+function adminAuth(req, res, next) {
+  const auth = req.headers['authorization'];
+  if (!auth || !auth.startsWith('Basic ')) {
+    res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
+    return res.status(401).send('Authentication required');
+  }
+  const base64 = auth.slice(6);
+  const decoded = Buffer.from(base64, 'base64').toString('utf8');
+  const [, password] = decoded.split(':');
+  if (password !== ADMIN_PASSWORD) {
+    res.set('WWW-Authenticate', 'Basic realm="Admin Area"');
+    return res.status(401).send('Invalid password');
+  }
+  next();
+}
+
+app.get('/admin', adminAuth, (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
-// Submit
+// Submit (public — students use this)
 app.post('/api/submit', upload.single('photo'), async (req, res) => {
   // Check DB connection first
   if (mongoose.connection.readyState !== 1) {
@@ -119,7 +138,7 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
     }
 
     const validDepts = [
-      'B.Tech CSE (AI & DA)',
+      'B.Tech CSE (AI5DA)',
       'B.Tech CSE (AI & ML)',
       'B.Tech CSE (CYBER)',
       'B.Tech CSE (MEDICAL)'
@@ -140,7 +159,6 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
       return res.status(409).json({ error: `Student ID "${studentId}" has already submitted a photo` });
     }
 
-    // Upload buffer to Cloudinary
     const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
 
     const student = new Student({
@@ -164,8 +182,8 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
   }
 });
 
-// Get all students
-app.get('/api/students', async (req, res) => {
+// Get all students (admin only)
+app.get('/api/students', adminAuth, async (req, res) => {
   try {
     const students = await Student.find()
       .select('name studentId department photoUrl submittedAt')
@@ -176,8 +194,8 @@ app.get('/api/students', async (req, res) => {
   }
 });
 
-// Delete student
-app.delete('/api/students/:id', async (req, res) => {
+// Delete student (admin only)
+app.delete('/api/students/:id', adminAuth, async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
     if (student) {
@@ -192,8 +210,8 @@ app.delete('/api/students/:id', async (req, res) => {
   }
 });
 
-// Export CSV
-app.get('/api/export/csv', async (req, res) => {
+// Export CSV (admin only)
+app.get('/api/export/csv', adminAuth, async (req, res) => {
   try {
     const students = await Student.find().sort({ submittedAt: 1 });
     let csv = 'Name,Student ID,Department,Photo URL,Submitted At\n';
