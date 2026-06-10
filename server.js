@@ -1,6 +1,4 @@
 require('dotenv').config();
-const dns = require('dns');
-dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const express    = require('express');
 const mongoose   = require('mongoose');
@@ -27,7 +25,12 @@ console.log('☁️  Cloudinary api_secret:', process.env.CLOUDINARY_API_SECRET 
 console.log('🗄️  MongoDB URI:', process.env.MONGODB_URI ? 'SET' : 'MISSING');
 
 // ── MongoDB ──────────────────────────────────────────────────────────────────
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 30000,
+  family: 4
+})
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB error:', err.message));
 
