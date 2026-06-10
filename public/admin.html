@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Student Photos</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: #1a3a52;
+      color: white;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .topbar h1 { font-size: 20px; font-weight: 700; }
+    .topbar p  { font-size: 13px; opacity: 0.7; margin-top: 2px; }
+    .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+    .btn { padding: 9px 18px; border: none; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+    .btn-csv     { background: #27ae60; color: white; }
+    .btn-csv:hover { background: #229954; }
+    .btn-refresh { background: rgba(255,255,255,0.15); color: white; }
+    .btn-refresh:hover { background: rgba(255,255,255,0.25); }
+
+    .stats-bar {
+      background: white;
+      padding: 16px 32px;
+      display: flex;
+      gap: 32px;
+      border-bottom: 1px solid #e0e0e0;
+      flex-wrap: wrap;
+    }
+
+    .stat { display: flex; align-items: center; gap: 8px; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #1a3a52; }
+    .stat-label { font-size: 13px; color: #666; }
+
+    .toolbar {
+      padding: 16px 32px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1; min-width: 200px; max-width: 360px;
+      padding: 10px 14px; border: 1.5px solid #ddd;
+      border-radius: 8px; font-size: 14px; font-family: inherit;
+    }
+    .search-box:focus { outline: none; border-color: #2980b9; }
+
+    .view-toggle { display: flex; gap: 6px; }
+    .view-btn { padding: 8px 14px; border: 1.5px solid #ddd; background: white; border-radius: 7px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .view-btn.active { background: #1a3a52; color: white; border-color: #1a3a52; }
+
+    .content { padding: 0 32px 32px; }
+
+    /* Grid */
+    .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+
+    .student-card {
+      background: white; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.2s;
+    }
+    .student-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+
+    .card-photo { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; cursor: pointer; }
+    .card-info { padding: 12px; }
+    .card-name { font-weight: 700; color: #1a3a52; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-id   { font-size: 12px; color: #888; margin-top: 3px; }
+    .card-date { font-size: 11px; color: #bbb; margin-top: 4px; }
+    .card-delete {
+      display: block; width: calc(100% - 24px); margin: 0 12px 12px;
+      padding: 6px; background: #fdecea; color: #e74c3c;
+      border: none; border-radius: 6px; cursor: pointer;
+      font-size: 12px; font-weight: 600; transition: background 0.2s;
+    }
+    .card-delete:hover { background: #e74c3c; color: white; }
+
+    /* Table */
+    .table-view { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    thead { background: #1a3a52; color: white; }
+    th { padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; }
+    td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f8f9fa; }
+
+    .thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
+    .thumb:hover { transform: scale(1.1); }
+    .badge { display: inline-block; padding: 3px 10px; background: #eaf4fb; color: #2980b9; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .delete-btn { padding: 5px 12px; background: #fdecea; color: #e74c3c; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+    .delete-btn:hover { background: #e74c3c; color: white; }
+
+    /* Empty / Loading */
+    .empty-state { text-align: center; padding: 80px 20px; color: #aaa; }
+    .empty-state .icon { font-size: 60px; margin-bottom: 16px; }
+    .empty-state p { font-size: 16px; }
+
+    .loading { text-align: center; padding: 60px; color: #888; }
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: #2980b9; border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Modal */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal.open { display: flex; }
+    .modal-box { background: white; border-radius: 16px; max-width: 500px; width: 100%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+    .modal-img { width: 100%; max-height: 420px; object-fit: contain; background: #111; display: block; }
+    .modal-info { padding: 20px 24px; }
+    .modal-name { font-size: 18px; font-weight: 700; color: #1a3a52; }
+    .modal-id   { font-size: 14px; color: #666; margin-top: 4px; }
+    .modal-date { font-size: 13px; color: #aaa; margin-top: 4px; }
+    .modal-footer { padding: 14px 24px; border-top: 1px solid #f0f0f0; display: flex; gap: 10px; }
+    .modal-footer button { flex: 1; padding: 10px; border: none; border-radius: 7px; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .btn-close { background: #ecf0f1; color: #2c3e50; }
+    .btn-close:hover { background: #d5dbdc; }
+    .btn-dl { background: #2980b9; color: white; }
+    .btn-dl:hover { background: #2471a3; }
+
+    @media (max-width: 600px) {
+      .topbar, .stats-bar, .toolbar, .content { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div>
+      <h1>🛠️ Admin Dashboard</h1>
+      <p>Student Photo Collection — 4th Year Farewell</p>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-refresh" onclick="loadStudents()">🔄 Refresh</button>
+      <button class="btn btn-csv" onclick="downloadCSV()">📥 Export CSV</button>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-value" id="totalCount">—</div>
+      <div class="stat-label">Total Submissions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="todayCount">—</div>
+      <div class="stat-label">Today</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search by name or ID..." oninput="filterStudents()">
+    <div class="view-toggle">
+      <button class="view-btn active" id="btnGrid"  onclick="setView('grid')">⊞ Grid</button>
+      <button class="view-btn"        id="btnTable" onclick="setView('table')">☰ Table</button>
+    </div>
+  </div>
+
+  <div class="content" id="mainContent">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading submissions...</p>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal" onclick="handleModalClick(event)">
+    <div class="modal-box">
+      <img class="modal-img" id="modalImg" alt="Student Photo">
+      <div class="modal-info">
+        <div class="modal-name" id="modalName"></div>
+        <div class="modal-id"   id="modalId"></div>
+        <div class="modal-date" id="modalDate"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-close" onclick="closeModal()">✕ Close</button>
+        <button class="btn-dl"    id="modalDlBtn">⬇ Download Photo</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allStudents  = [];
+    let currentView  = 'grid';
+
+    async function loadStudents() {
+      document.getElementById('mainContent').innerHTML =
+        '<div class="loading"><div class="spinner"></div><p>Loading submissions...</p></div>';
+      try {
+        const res = await fetch('/api/students');
+        allStudents = await res.json();
+        updateStats();
+        renderStudents(allStudents);
+      } catch (err) {
+        document.getElementById('mainContent').innerHTML =
+          '<div class="empty-state"><div class="icon">⚠️</div><p>Failed to load data. Check server.</p></div>';
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('totalCount').textContent = allStudents.length;
+      const today = new Date().toDateString();
+      document.getElementById('todayCount').textContent =
+        allStudents.filter(s => new Date(s.submittedAt).toDateString() === today).length;
+    }
+
+    function filterStudents() {
+      const q = document.getElementById('searchBox').value.toLowerCase();
+      renderStudents(allStudents.filter(s =>
+        s.name.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q)
+      ));
+    }
+
+    function setView(view) {
+      currentView = view;
+      document.getElementById('btnGrid').classList.toggle('active', view === 'grid');
+      document.getElementById('btnTable').classList.toggle('active', view === 'table');
+      filterStudents();
+    }
+
+    function renderStudents(students) {
+      const container = document.getElementById('mainContent');
+      if (students.length === 0) {
+        container.innerHTML =
+          '<div class="empty-state"><div class="icon">📭</div><p>No submissions found.</p></div>';
+        return;
+      }
+
+      if (currentView === 'grid') {
+        container.innerHTML = '<div class="grid-view">' +
+          students.map(s =>
+            '<div class="student-card">' +
+              '<img class="card-photo" src="' + s.photoUrl + '" alt="' + esc(s.name) + '" ' +
+                'onclick="openModal(\'' + s._id + '\',\'' + esc(s.name) + '\',\'' + esc(s.studentId) + '\',\'' + s.submittedAt + '\',\'' + s.photoUrl + '\')">' +
+              '<div class="card-info">' +
+                '<div class="card-name">' + esc(s.name) + '</div>' +
+                '<div class="card-id">' + esc(s.studentId) + '</div>' +
+                '<div class="card-date">' + fmtDate(s.submittedAt) + '</div>' +
+              '</div>' +
+              '<button class="card-delete" onclick="deleteStudent(\'' + s._id + '\', event)">🗑 Delete</button>' +
+            '</div>'
+          ).join('') +
+        '</div>';
+      } else {
+        container.innerHTML =
+          '<div class="table-view"><table>' +
+          '<thead><tr><th>Photo</th><th>Name</th><th>Student ID</th><th>Submitted At</th><th>Action</th></tr></thead>' +
+          '<tbody>' +
+          students.map(s =>
+            '<tr>' +
+              '<td><img class="thumb" src="' + s.photoUrl + '" alt="' + esc(s.name) + '" ' +
+                'onclick="openModal(\'' + s._id + '\',\'' + esc(s.name) + '\',\'' + esc(s.studentId) + '\',\'' + s.submittedAt + '\',\'' + s.photoUrl + '\')"></td>' +
+              '<td><strong>' + esc(s.name) + '</strong></td>' +
+              '<td><span class="badge">' + esc(s.studentId) + '</span></td>' +
+              '<td>' + fmtDate(s.submittedAt) + '</td>' +
+              '<td><button class="delete-btn" onclick="deleteStudent(\'' + s._id + '\', event)">🗑 Delete</button></td>' +
+            '</tr>'
+          ).join('') +
+          '</tbody></table></div>';
+      }
+    }
+
+    async function deleteStudent(id, e) {
+      e.stopPropagation();
+      if (!confirm('Delete this student entry? This cannot be undone.')) return;
+      try {
+        await fetch('/api/students/' + id, { method: 'DELETE' });
+        allStudents = allStudents.filter(s => s._id !== id);
+        updateStats();
+        filterStudents();
+      } catch (err) {
+        alert('Failed to delete entry.');
+      }
+    }
+
+    function openModal(id, name, studentId, date, photoUrl) {
+      document.getElementById('modal').classList.add('open');
+      document.getElementById('modalImg').src   = photoUrl;
+      document.getElementById('modalName').textContent = name;
+      document.getElementById('modalId').textContent   = 'ID: ' + studentId;
+      document.getElementById('modalDate').textContent = 'Submitted: ' + fmtDate(date);
+      document.getElementById('modalDlBtn').onclick = () => downloadPhoto(photoUrl, name);
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('open');
+    }
+
+    function handleModalClick(e) {
+      if (e.target === document.getElementById('modal')) closeModal();
+    }
+
+    function downloadPhoto(url, name) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name.replace(/\s+/g, '_') + '_photo';
+      a.target = '_blank';
+      a.click();
+    }
+
+    function downloadCSV() { window.location.href = '/api/export/csv'; }
+
+    function fmtDate(d) {
+      return new Date(d).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    loadStudents();
+    setInterval(loadStudents, 30000);
+  </script>
+</body>
+</html>
