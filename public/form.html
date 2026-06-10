@@ -490,7 +490,7 @@
           document.getElementById('name').classList.remove('is-valid');
           document.getElementById('studentId').classList.remove('is-valid');
         } else {
-          showAlert('error', '❌ ' + (data.error || 'Submission failed. Please try again.'));
+          showAlert('error', '❌ ' + (data.error || 'Submission failed. Please try again.') + '<br><small style="opacity:0.7">' + JSON.stringify(data) + '</small>');
         }
       } catch (_) {
         showAlert('error', '❌ Network error. Please check your connection and try again.');

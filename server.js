@@ -20,6 +20,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// Verify Cloudinary config on startup
+console.log('☁️  Cloudinary cloud_name:', process.env.CLOUDINARY_CLOUD_NAME || 'MISSING');
+console.log('☁️  Cloudinary api_key:', process.env.CLOUDINARY_API_KEY ? 'SET' : 'MISSING');
+console.log('☁️  Cloudinary api_secret:', process.env.CLOUDINARY_API_SECRET ? 'SET' : 'MISSING');
+console.log('🗄️  MongoDB URI:', process.env.MONGODB_URI ? 'SET' : 'MISSING');
+
 // ── MongoDB ──────────────────────────────────────────────────────────────────
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
@@ -120,8 +126,8 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
     if (err.code === 11000) {
       return res.status(409).json({ error: 'This Student ID has already submitted' });
     }
-    console.error('Submit error:', err);
-    res.status(500).json({ error: 'Server error. Please try again.' });
+    console.error('Submit error:', err.message, err.stack);
+    res.status(500).json({ error: err.message || 'Server error. Please try again.' });
   }
 });
 
