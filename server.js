@@ -138,7 +138,7 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
     }
 
     const validDepts = [
-      'B.Tech CSE (AI5DA)',
+      'B.Tech CSE (AI & DA)',
       'B.Tech CSE (AI & ML)',
       'B.Tech CSE (CYBER)',
       'B.Tech CSE (MEDICAL)'
