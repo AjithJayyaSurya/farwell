@@ -25,14 +25,28 @@ console.log('☁️  Cloudinary api_secret:', process.env.CLOUDINARY_API_SECRET 
 console.log('🗄️  MongoDB URI:', process.env.MONGODB_URI ? 'SET' : 'MISSING');
 
 // ── MongoDB ──────────────────────────────────────────────────────────────────
-mongoose.connect(process.env.MONGODB_URI, {
-  serverSelectionTimeoutMS: 30000,
-  socketTimeoutMS: 45000,
-  connectTimeoutMS: 30000,
-  family: 4
-})
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB error:', err.message));
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 30000,
+      family: 4,
+      bufferCommands: false
+    });
+    console.log('✅ MongoDB connected');
+  } catch (err) {
+    console.error('❌ MongoDB error:', err.message);
+    console.log('🔄 Retrying in 5s...');
+    setTimeout(connectDB, 5000);
+  }
+};
+connectDB();
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️  MongoDB disconnected, reconnecting...');
+  setTimeout(connectDB, 5000);
+});
 
 const studentSchema = new mongoose.Schema({
   name:        { type: String, required: true, trim: true },
@@ -92,6 +106,10 @@ app.get('/admin', (req, res) =>
 
 // Submit
 app.post('/api/submit', upload.single('photo'), async (req, res) => {
+  // Check DB connection first
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ error: 'Database is connecting, please try again in a moment.' });
+  }
   try {
     const { name, studentId } = req.body;
 
