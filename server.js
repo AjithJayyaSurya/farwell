@@ -6,9 +6,9 @@ const express    = require('express');
 const mongoose   = require('mongoose');
 const multer     = require('multer');
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cors       = require('cors');
 const path       = require('path');
+const { Readable } = require('stream');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
@@ -29,24 +29,15 @@ const studentSchema = new mongoose.Schema({
   name:        { type: String, required: true, trim: true },
   studentId:   { type: String, required: true, trim: true, unique: true },
   photoUrl:    { type: String, required: true },
-  publicId:    { type: String },          // Cloudinary public_id for deletion
+  publicId:    { type: String },
   submittedAt: { type: Date, default: Date.now }
 });
 
 const Student = mongoose.model('Student', studentSchema);
 
-// ── Multer → Cloudinary storage ──────────────────────────────────────────────
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder:         'farwell-students',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
-    transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }]
-  }
-});
-
+// ── Multer — memory storage ──────────────────────────────────────────────────
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter(req, file, cb) {
     if (!file.mimetype.startsWith('image/')) {
@@ -55,6 +46,27 @@ const upload = multer({
     cb(null, true);
   }
 });
+
+// ── Helper: upload buffer to Cloudinary ─────────────────────────────────────
+function uploadToCloudinary(buffer, mimetype) {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'farwell-students',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
+        transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }]
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+    const readable = new Readable();
+    readable.push(buffer);
+    readable.push(null);
+    readable.pipe(uploadStream);
+  });
+}
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors());
@@ -75,7 +87,6 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
     const { name, studentId } = req.body;
 
     if (!name || !studentId) {
-      if (req.file) await cloudinary.uploader.destroy(req.file.filename);
       return res.status(400).json({ error: 'Name and Student ID are required' });
     }
 
@@ -88,15 +99,17 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
     });
 
     if (existing) {
-      await cloudinary.uploader.destroy(req.file.filename);
       return res.status(409).json({ error: `Student ID "${studentId}" has already submitted a photo` });
     }
+
+    // Upload buffer to Cloudinary
+    const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
 
     const student = new Student({
       name:      name.trim(),
       studentId: studentId.trim(),
-      photoUrl:  req.file.path,
-      publicId:  req.file.filename
+      photoUrl:  result.secure_url,
+      publicId:  result.public_id
     });
 
     await student.save();
@@ -105,7 +118,6 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
 
   } catch (err) {
     if (err.code === 11000) {
-      if (req.file) await cloudinary.uploader.destroy(req.file.filename);
       return res.status(409).json({ error: 'This Student ID has already submitted' });
     }
     console.error('Submit error:', err);
