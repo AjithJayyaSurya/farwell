@@ -51,6 +51,7 @@ mongoose.connection.on('disconnected', () => {
 const studentSchema = new mongoose.Schema({
   name:        { type: String, required: true, trim: true },
   studentId:   { type: String, required: true, trim: true, unique: true },
+  department:  { type: String, required: true, trim: true },
   photoUrl:    { type: String, required: true },
   publicId:    { type: String },
   submittedAt: { type: Date, default: Date.now }
@@ -111,10 +112,20 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
     return res.status(503).json({ error: 'Database is connecting, please try again in a moment.' });
   }
   try {
-    const { name, studentId } = req.body;
+    const { name, studentId, department } = req.body;
 
-    if (!name || !studentId) {
-      return res.status(400).json({ error: 'Name and Student ID are required' });
+    if (!name || !studentId || !department) {
+      return res.status(400).json({ error: 'Name, Student ID and Department are required' });
+    }
+
+    const validDepts = [
+      'B.Tech CSE (AI & DA)',
+      'B.Tech CSE (AI & ML)',
+      'B.Tech CSE (CYBER)',
+      'B.Tech CSE (MEDICAL)'
+    ];
+    if (!validDepts.includes(department)) {
+      return res.status(400).json({ error: 'Invalid department selected' });
     }
 
     if (!req.file) {
@@ -133,10 +144,11 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
     const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
 
     const student = new Student({
-      name:      name.trim(),
-      studentId: studentId.trim(),
-      photoUrl:  result.secure_url,
-      publicId:  result.public_id
+      name:       name.trim(),
+      studentId:  studentId.trim(),
+      department: department.trim(),
+      photoUrl:   result.secure_url,
+      publicId:   result.public_id
     });
 
     await student.save();
@@ -156,7 +168,7 @@ app.post('/api/submit', upload.single('photo'), async (req, res) => {
 app.get('/api/students', async (req, res) => {
   try {
     const students = await Student.find()
-      .select('name studentId photoUrl submittedAt')
+      .select('name studentId department photoUrl submittedAt')
       .sort({ submittedAt: -1 });
     res.json(students);
   } catch (err) {
@@ -184,9 +196,9 @@ app.delete('/api/students/:id', async (req, res) => {
 app.get('/api/export/csv', async (req, res) => {
   try {
     const students = await Student.find().sort({ submittedAt: 1 });
-    let csv = 'Name,Student ID,Photo URL,Submitted At\n';
+    let csv = 'Name,Student ID,Department,Photo URL,Submitted At\n';
     students.forEach(s => {
-      csv += `"${s.name}","${s.studentId}","${s.photoUrl}","${new Date(s.submittedAt).toLocaleString()}"\n`;
+      csv += `"${s.name}","${s.studentId}","${s.department || ''}","${s.photoUrl}","${new Date(s.submittedAt).toLocaleString()}"\n`;
     });
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="students_${Date.now()}.csv"`);

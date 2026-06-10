@@ -80,6 +80,7 @@
     .card-info { padding: 12px; }
     .card-name { font-weight: 700; color: #1a3a52; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-id   { font-size: 12px; color: #888; margin-top: 3px; }
+    .card-dept { font-size: 11px; color: #2980b9; margin-top: 3px; font-weight: 600; }
     .card-date { font-size: 11px; color: #bbb; margin-top: 4px; }
     .card-delete {
       display: block; width: calc(100% - 24px); margin: 0 12px 12px;
@@ -245,6 +246,7 @@
               '<div class="card-info">' +
                 '<div class="card-name">' + esc(s.name) + '</div>' +
                 '<div class="card-id">' + esc(s.studentId) + '</div>' +
+                '<div class="card-dept">' + esc(s.department || '—') + '</div>' +
                 '<div class="card-date">' + fmtDate(s.submittedAt) + '</div>' +
               '</div>' +
               '<button class="card-delete" onclick="deleteStudent(\'' + s._id + '\', event)">🗑 Delete</button>' +
@@ -254,7 +256,7 @@
       } else {
         container.innerHTML =
           '<div class="table-view"><table>' +
-          '<thead><tr><th>Photo</th><th>Name</th><th>Student ID</th><th>Submitted At</th><th>Action</th></tr></thead>' +
+          '<thead><tr><th>Photo</th><th>Name</th><th>Student ID</th><th>Department</th><th>Submitted At</th><th>Action</th></tr></thead>' +
           '<tbody>' +
           students.map(s =>
             '<tr>' +
@@ -262,6 +264,7 @@
                 'onclick="openModal(\'' + s._id + '\',\'' + esc(s.name) + '\',\'' + esc(s.studentId) + '\',\'' + s.submittedAt + '\',\'' + s.photoUrl + '\')"></td>' +
               '<td><strong>' + esc(s.name) + '</strong></td>' +
               '<td><span class="badge">' + esc(s.studentId) + '</span></td>' +
+              '<td>' + esc(s.department || '—') + '</td>' +
               '<td>' + fmtDate(s.submittedAt) + '</td>' +
               '<td><button class="delete-btn" onclick="deleteStudent(\'' + s._id + '\', event)">🗑 Delete</button></td>' +
             '</tr>'

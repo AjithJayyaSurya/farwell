@@ -94,6 +94,31 @@
     input[type="text"].is-valid { border-color: #27ae60; }
     input[type="text"].is-error { border-color: #e74c3c; }
 
+    select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #dde1e7;
+      border-radius: 9px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #2c3e50;
+      background: #fafbfc;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23999' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      cursor: pointer;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    select:focus {
+      outline: none;
+      border-color: #2980b9;
+      background-color: white;
+      box-shadow: 0 0 0 3px rgba(41,128,185,0.12);
+    }
+    select.is-valid { border-color: #27ae60; }
+    select.is-error { border-color: #e74c3c; }
+
     .hint {
       font-size: 12px;
       color: #999;
@@ -287,6 +312,19 @@
 
     <form id="submitForm" novalidate>
 
+      <!-- Department -->
+      <div class="field">
+        <label for="department">Department <span class="req">*</span></label>
+        <select id="department">
+          <option value="" disabled selected>Select your department</option>
+          <option value="B.Tech CSE (AI5DA)">B.Tech CSE (AI5DA)</option>
+          <option value="B.Tech CSE (AI & ML)">B.Tech CSE (AI &amp; ML)</option>
+          <option value="B.Tech CSE (CYBER)">B.Tech CSE (CYBER)</option>
+          <option value="B.Tech CSE (MEDICAL)">B.Tech CSE (MEDICAL)</option>
+        </select>
+        <div class="error-msg" id="deptErr">Please select your department.</div>
+      </div>
+
       <!-- Full Name -->
       <div class="field">
         <label for="name">Full Name <span class="req">*</span></label>
@@ -409,6 +447,11 @@
     });
 
     // Inline validation
+    document.getElementById('department').addEventListener('change', function() {
+      this.classList.toggle('is-valid', this.value !== '');
+      this.classList.remove('is-error');
+      document.getElementById('deptErr').style.display = 'none';
+    });
     document.getElementById('name').addEventListener('input', function() {
       this.classList.toggle('is-valid', this.value.trim().length > 0);
       this.classList.remove('is-error');
@@ -440,17 +483,24 @@
       e.preventDefault();
 
       // Clear previous errors
-      ['nameErr','idErr','photoErr'].forEach(id => {
+      ['deptErr','nameErr','idErr','photoErr'].forEach(id => {
         document.getElementById(id).style.display = 'none';
       });
+      document.getElementById('department').classList.remove('is-error');
       document.getElementById('name').classList.remove('is-error');
       document.getElementById('studentId').classList.remove('is-error');
 
+      const department = document.getElementById('department').value;
       const name      = document.getElementById('name').value.trim();
       const studentId = document.getElementById('studentId').value.trim();
       const file      = photoInput.files[0];
 
       let valid = true;
+      if (!department) {
+        document.getElementById('deptErr').style.display = 'block';
+        document.getElementById('department').classList.add('is-error');
+        valid = false;
+      }
       if (!name) {
         document.getElementById('nameErr').style.display = 'block';
         document.getElementById('name').classList.add('is-error');
@@ -472,6 +522,7 @@
       btn.innerHTML = '<span class="spinner"></span>Submitting...';
 
       const formData = new FormData();
+      formData.append('department', department);
       formData.append('name', name);
       formData.append('studentId', studentId);
       formData.append('photo', file);
@@ -483,10 +534,11 @@
         if (res.ok) {
           showAlert('success',
             '✅ <strong>' + esc(name) + '</strong>, your photo has been submitted successfully!<br>' +
-            '<span style="font-size:13px;opacity:0.85;">Student ID: ' + esc(studentId) + '</span>'
+            '<span style="font-size:13px;opacity:0.85;">Student ID: ' + esc(studentId) + ' &nbsp;|&nbsp; ' + esc(department) + '</span>'
           );
           document.getElementById('submitForm').reset();
           resetPhoto();
+          document.getElementById('department').classList.remove('is-valid');
           document.getElementById('name').classList.remove('is-valid');
           document.getElementById('studentId').classList.remove('is-valid');
         } else {
